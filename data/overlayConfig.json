@@ -1,0 +1,17 @@
+{
+  "teams": {
+    "teamA": "India",
+    "teamB": "New Zealand"
+  },
+  "score": {
+    "runs": 0,
+    "wickets": 0,
+    "overs": "0.0"
+  },
+  "batsmen": {
+    "striker": "",
+    "nonStriker": ""
+  },
+  "bowler": "",
+  "showScorebug": true
+}
