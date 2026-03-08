@@ -1,6 +1,6 @@
 import express from "express";
 import cors from "cors";
-import espnRoutes from "./routes/espnRoutes.js";
+import espnRoutes from "./routes/cricinfoRoutes.js";
 
 const app = express();
 const PORT = process.env.PORT || 5000;
