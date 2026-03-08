@@ -1,6 +1,6 @@
 import express from "express";
 import cors from "cors";
-import espnRoutes from "./routes/cricinfoRoutes.js";
+import cricketDataRoutes from "./routes/cricketDataRoutes.js";
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -8,10 +8,10 @@ const PORT = process.env.PORT || 5000;
 app.use(cors());
 app.use(express.json());
 
-app.use("/api/espn", espnRoutes);
+app.use("/api/cricket", cricketDataRoutes);
 
 app.get("/", (req, res) => {
-  res.send("Cricket backend running (ESPN Cricinfo)");
+  res.send("Cricket backend running (CricketData API)");
 });
 
 app.listen(PORT, () => {
