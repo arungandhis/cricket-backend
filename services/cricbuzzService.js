@@ -1,14 +1,13 @@
 import * as cheerio from "cheerio";
 
-// This page contains REAL HTML (not React shell)
 const LIVE_SCORES_URL =
-  "https://m.cricbuzz.com/cricket-match/live-scores";
+  "https://www.espncricinfo.com/live-cricket-score";
 
 const SCORECARD_BASE_URL =
-  "https://www.cricbuzz.com/live-cricket-scorecard/";
+  "https://www.espncricinfo.com/series/_/id/";
 
 const COMMENTARY_BASE_URL =
-  "https://www.cricbuzz.com/live-cricket-full-commentary/";
+  "https://www.espncricinfo.com/series/_/id/";
 
 async function fetchHtml(url) {
   const res = await fetch(url, {
@@ -25,27 +24,35 @@ async function fetchHtml(url) {
   return await res.text();
 }
 
-// ---------------- MATCH LIST (HTML SCRAPER) ----------------
+// ------------- MATCH LIST -------------
 
-export async function fetchCricbuzzMatchList() {
+export async function fetchEspnMatchList() {
   const html = await fetchHtml(LIVE_SCORES_URL);
   const $ = cheerio.load(html);
 
   const matches = [];
 
-  // This selector exists on the recent-matches page
-  $("a.cb-lv-scrs-link").each((_, el) => {
-    const link = $(el).attr("href") || "";
-    const title = $(el).text().trim();
+  // Each match card
+  $("section.ds-rounded-lg.ds-mb-4").each((_, el) => {
+    const title = $(el).find("span.ds-text-tight-m").first().text().trim();
 
-    const matchIdMatch = link.match(/live-cricket-scorecard\/(\d+)/);
+    // Link to scorecard
+    const scorecardLink = $(el)
+      .find("a:contains('Scorecard')")
+      .attr("href");
+
+    if (!scorecardLink) return;
+
+    // Example: /series/india-tour-of-australia-2024-25-1234567/australia-vs-india-1st-test-1234568/full-scorecard
+    const matchIdMatch = scorecardLink.match(/-(\d+)\/full-scorecard/);
     const matchId = matchIdMatch ? matchIdMatch[1] : null;
 
     if (matchId) {
       matches.push({
         id: matchId,
         name: title || `Match ${matchId}`,
-        provider: "cricbuzz"
+        provider: "espncricinfo",
+        scorecardPath: scorecardLink
       });
     }
   });
@@ -53,24 +60,28 @@ export async function fetchCricbuzzMatchList() {
   return matches;
 }
 
-// ---------------- SCORE (HTML SCRAPER) ----------------
+// ------------- SCORE -------------
 
-export async function fetchCricbuzzScore(matchId) {
-  const html = await fetchHtml(`${SCORECARD_BASE_URL}${matchId}`);
-  return extractCricbuzzScoreFromHTML(html, matchId);
+export async function fetchEspnScore(matchId, scorecardPath) {
+  const url = scorecardPath
+    ? `https://www.espncricinfo.com${scorecardPath}`
+    : `${SCORECARD_BASE_URL}${matchId}/full-scorecard`;
+
+  const html = await fetchHtml(url);
+  return extractEspnScoreFromHTML(html, matchId);
 }
 
-export function extractCricbuzzScoreFromHTML(html, matchId) {
+export function extractEspnScoreFromHTML(html, matchId) {
   const $ = cheerio.load(html);
 
-  const status = $(".cb-scrcrd-status").text().trim();
+  const status = $("span.ds-text-tight-s.ds-font-regular").first().text().trim();
 
   const innings = [];
-  $(".cb-scrd-hdr-rw").each((_, el) => {
-    const team = $(el).find("span").first().text().trim();
-    const summary = $(el).next(".cb-scrd-lft-col").text().trim();
+  $("div.ds-rounded-lg.ds-mb-4").each((_, el) => {
+    const team = $(el).find("span.ds-text-title-xs").first().text().trim();
+    const summary = $(el).find("strong.ds-text-compact-m").first().text().trim();
 
-    if (team) {
+    if (team && summary) {
       innings.push({ team, summary });
     }
   });
@@ -78,20 +89,25 @@ export function extractCricbuzzScoreFromHTML(html, matchId) {
   return { matchId, status, innings };
 }
 
-// ---------------- COMMENTARY (HTML SCRAPER) ----------------
+// ------------- COMMENTARY -------------
 
-export async function fetchCricbuzzCommentary(matchId) {
-  const html = await fetchHtml(`${COMMENTARY_BASE_URL}${matchId}`);
-  return extractCricbuzzCommentaryFromHTML(html, matchId);
+export async function fetchEspnCommentary(matchId, scorecardPath) {
+  const commentaryPath = scorecardPath
+    ? scorecardPath.replace("full-scorecard", "ball-by-ball-commentary")
+    : `${SCORECARD_BASE_URL}${matchId}/ball-by-ball-commentary`;
+
+  const url = `https://www.espncricinfo.com${commentaryPath}`;
+  const html = await fetchHtml(url);
+  return extractEspnCommentaryFromHTML(html, matchId);
 }
 
-export function extractCricbuzzCommentaryFromHTML(html, matchId) {
+export function extractEspnCommentaryFromHTML(html, matchId) {
   const $ = cheerio.load(html);
   const commentary = [];
 
-  $(".cb-col.cb-col-90.cb-com-ln").each((_, el) => {
-    const over = $(el).find(".cb-ovr-num").text().trim();
-    const text = $(el).text().trim();
+  $("div.ds-py-3").each((_, el) => {
+    const over = $(el).find("span.ds-text-tight-xs").first().text().trim();
+    const text = $(el).find("p.ds-text-tight-s").text().trim();
     if (text) commentary.push({ over, text });
   });
 
