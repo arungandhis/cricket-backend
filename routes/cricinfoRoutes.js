@@ -22,7 +22,7 @@ router.get("/matches", async (req, res) => {
 router.get("/score/:matchId", async (req, res) => {
   try {
     const { matchId } = req.params;
-    const { scorecardPath } = req.query; // optional
+    const { scorecardPath } = req.query;
     const score = await fetchEspnScore(matchId, scorecardPath);
     res.json(score);
   } catch (err) {
@@ -35,7 +35,7 @@ router.get("/score/:matchId", async (req, res) => {
 router.get("/commentary/:matchId", async (req, res) => {
   try {
     const { matchId } = req.params;
-    const { scorecardPath } = req.query; // optional
+    const { scorecardPath } = req.query;
     const commentary = await fetchEspnCommentary(matchId, scorecardPath);
     res.json(commentary);
   } catch (err) {
