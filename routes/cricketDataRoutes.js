@@ -37,4 +37,26 @@ router.get("/commentary/:matchId", async (req, res) => {
   }
 });
 
+router.get("/matches/upcoming", async (req, res) => {
+  try {
+    const url = `${BASE_URL}/matches?apikey=${API_KEY}`;
+    const data = await fetchJson(url);
+
+    const upcoming = data.data
+      .filter(m => m.status === "Not Started" || m.status === "Scheduled")
+      .map(m => ({
+        id: m.id,
+        name: `${m.teams[0]} vs ${m.teams[1]}`,
+        status: m.status,
+        provider: "cricketdata"
+      }));
+
+    res.json(upcoming);
+  } catch (err) {
+    console.error("UPCOMING MATCHES ERROR:", err.message);
+    res.status(500).json({ error: "Failed to fetch upcoming matches" });
+  }
+});
+
+
 export default router;
