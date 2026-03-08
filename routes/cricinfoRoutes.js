@@ -3,7 +3,7 @@ import {
   fetchEspnMatchList,
   fetchEspnScore,
   fetchEspnCommentary
-} from "../services/espnService.js";
+} from "../services/cricinfoService.js";
 
 const router = express.Router();
 
