@@ -2,7 +2,7 @@ import * as cheerio from "cheerio";
 
 // This page contains REAL HTML (not React shell)
 const LIVE_SCORES_URL =
-  "https://www.cricbuzz.com/cricket-match/live-scores/recent-matches";
+  "https://m.cricbuzz.com/cricket-match/live-scores";
 
 const SCORECARD_BASE_URL =
   "https://www.cricbuzz.com/live-cricket-scorecard/";
