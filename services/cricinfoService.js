@@ -1,5 +1,6 @@
 import * as cheerio from "cheerio";
 
+console.log("LOADED cricinfoService.js");
 const LIVE_SCORES_URL =
   "https://www.espncricinfo.com/live-cricket-score";
 
