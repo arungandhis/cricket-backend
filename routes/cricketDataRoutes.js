@@ -3,14 +3,13 @@ import fetch from "node-fetch";
 
 const router = express.Router();
 
-const API_KEY = process.env.CD_API_KEY; // your CricketData API key
+const API_KEY = process.env.CD_API_KEY;
 const BASE_URL = "https://api.cricapi.com/v1";
 
-// Helper to fetch JSON safely
 async function fetchJson(url) {
   const res = await fetch(url);
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  return res.json();
+  const json = await res.json().catch(() => null);
+  return json;
 }
 
 /* ---------------------------------------------------------
@@ -21,9 +20,25 @@ router.get("/matches", async (req, res) => {
     const url = `${BASE_URL}/currentMatches?apikey=${API_KEY}`;
     const data = await fetchJson(url);
 
-    const matches = (data.data || []).map(m => ({
+    // SAFETY CHECKS
+    if (!data) {
+      console.error("MATCH LIST ERROR: No response from API");
+      return res.json([]);
+    }
+
+    if (data.status === "error") {
+      console.error("MATCH LIST ERROR:", data.message);
+      return res.json([]);
+    }
+
+    if (!Array.isArray(data.data)) {
+      console.error("MATCH LIST ERROR: data.data missing");
+      return res.json([]);
+    }
+
+    const matches = data.data.map(m => ({
       id: m.id,
-      name: `${m.teams[0]} vs ${m.teams[1]}`,
+      name: `${m.teams?.[0]} vs ${m.teams?.[1]}`,
       status: m.status,
       provider: "cricketdata"
     }));
@@ -31,36 +46,12 @@ router.get("/matches", async (req, res) => {
     res.json(matches);
   } catch (err) {
     console.error("MATCH LIST ERROR:", err.message);
-    res.status(500).json({ error: "Failed to fetch matches" });
+    res.json([]);
   }
 });
 
 /* ---------------------------------------------------------
-   GET UPCOMING MATCHES
---------------------------------------------------------- */
-router.get("/matches/upcoming", async (req, res) => {
-  try {
-    const url = `${BASE_URL}/matches?apikey=${API_KEY}`;
-    const data = await fetchJson(url);
-
-    const upcoming = (data.data || [])
-      .filter(m => m.status === "Not Started" || m.status === "Scheduled")
-      .map(m => ({
-        id: m.id,
-        name: `${m.teams[0]} vs ${m.teams[1]}`,
-        status: m.status,
-        provider: "cricketdata"
-      }));
-
-    res.json(upcoming);
-  } catch (err) {
-    console.error("UPCOMING MATCHES ERROR:", err.message);
-    res.status(500).json({ error: "Failed to fetch upcoming matches" });
-  }
-});
-
-/* ---------------------------------------------------------
-   GET LIVE SCORE
+   GET SCORE
 --------------------------------------------------------- */
 router.get("/score/:matchId", async (req, res) => {
   try {
@@ -68,10 +59,15 @@ router.get("/score/:matchId", async (req, res) => {
     const url = `${BASE_URL}/match_scorecard?apikey=${API_KEY}&id=${matchId}`;
     const data = await fetchJson(url);
 
-    res.json(data.data || {});
+    if (!data || data.status === "error" || !data.data) {
+      console.error("SCORE ERROR:", data?.message);
+      return res.json({});
+    }
+
+    res.json(data.data);
   } catch (err) {
     console.error("SCORE ERROR:", err.message);
-    res.status(500).json({ error: "Failed to fetch score" });
+    res.json({});
   }
 });
 
@@ -84,12 +80,17 @@ router.get("/commentary/:matchId", async (req, res) => {
     const url = `${BASE_URL}/match_commentary?apikey=${API_KEY}&id=${matchId}`;
     const data = await fetchJson(url);
 
+    if (!data || data.status === "error" || !data.data) {
+      console.error("COMMENTARY ERROR:", data?.message);
+      return res.json({ commentary: [] });
+    }
+
     res.json({
-      commentary: data.data?.commentary || []
+      commentary: data.data.commentary || []
     });
   } catch (err) {
     console.error("COMMENTARY ERROR:", err.message);
-    res.status(500).json({ error: "Failed to fetch commentary" });
+    res.json({ commentary: [] });
   }
 });
 
