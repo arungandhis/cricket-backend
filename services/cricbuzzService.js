@@ -1,9 +1,8 @@
 import * as cheerio from "cheerio";
 
-import fs from "fs";
-
+// This page contains REAL HTML (not React shell)
 const LIVE_SCORES_URL =
-  "https://www.cricbuzz.com/cricket-match/live-scores";
+  "https://www.cricbuzz.com/cricket-match/live-scores/recent-matches";
 
 const SCORECARD_BASE_URL =
   "https://www.cricbuzz.com/live-cricket-scorecard/";
@@ -26,26 +25,15 @@ async function fetchHtml(url) {
   return await res.text();
 }
 
-// ---------------- MATCH LIST (HTML) ----------------
+// ---------------- MATCH LIST (HTML SCRAPER) ----------------
 
 export async function fetchCricbuzzMatchList() {
-
-
   const html = await fetchHtml(LIVE_SCORES_URL);
-
-
-fs.writeFileSync("cricbuzz_debug.html", html.substring(0, 5000));
-
-  console.log("WROTE DEBUG FILE: cricbuzz_debug.html");
-
-
   const $ = cheerio.load(html);
-console.log("USING HTML SCRAPER — NOT JSON");
-console.log("=== HTML LENGTH ===", html.length);
-  console.log("=== HTML SNIPPET ===");
 
   const matches = [];
 
+  // This selector exists on the recent-matches page
   $("a.cb-lv-scrs-link").each((_, el) => {
     const link = $(el).attr("href") || "";
     const title = $(el).text().trim();
@@ -65,7 +53,7 @@ console.log("=== HTML LENGTH ===", html.length);
   return matches;
 }
 
-// ---------------- SCORE (HTML) ----------------
+// ---------------- SCORE (HTML SCRAPER) ----------------
 
 export async function fetchCricbuzzScore(matchId) {
   const html = await fetchHtml(`${SCORECARD_BASE_URL}${matchId}`);
@@ -90,7 +78,7 @@ export function extractCricbuzzScoreFromHTML(html, matchId) {
   return { matchId, status, innings };
 }
 
-// ---------------- COMMENTARY (HTML) ----------------
+// ---------------- COMMENTARY (HTML SCRAPER) ----------------
 
 export async function fetchCricbuzzCommentary(matchId) {
   const html = await fetchHtml(`${COMMENTARY_BASE_URL}${matchId}`);
