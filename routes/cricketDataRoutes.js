@@ -1,96 +1,169 @@
+// backend/routes/cricketDataRoutes.js
 import express from "express";
-import fetch from "node-fetch";
+import {
+  getLiveMatchesRaw,
+  getMatchScoreRaw,
+  getCommentaryRaw
+} from "../services/cricbuzzService.js";
 
 const router = express.Router();
 
-const API_KEY = process.env.CD_API_KEY;
-const BASE_URL = "https://api.cricapi.com/v1";
+/* ---------------------------------------------------------
+   NORMALIZERS → shape data for your existing frontend
+--------------------------------------------------------- */
 
-async function fetchJson(url) {
-  const res = await fetch(url);
-  const json = await res.json().catch(() => null);
-  return json;
+function normalizeMatches(raw) {
+  // Cricbuzz mobile usually returns { matches: [...] } or { match: [...] }
+  const list =
+    raw?.matches ||
+    raw?.match ||
+    raw?.data ||
+    [];
+
+  return list.map((m) => {
+    const id =
+      m.match_id ||
+      m.id ||
+      m.matchId;
+
+    const team1 =
+      m.team1?.name ||
+      m.team1_name ||
+      m.team1?.s_name ||
+      m.team1?.fn ||
+      m.team1;
+
+    const team2 =
+      m.team2?.name ||
+      m.team2_name ||
+      m.team2?.s_name ||
+      m.team2?.fn ||
+      m.team2;
+
+    const status =
+      m.header?.status ||
+      m.status ||
+      m.state ||
+      "Unknown";
+
+    return {
+      id,
+      name: `${team1} vs ${team2}`,
+      status,
+      provider: "cricbuzz"
+    };
+  }).filter(m => m.id && m.name);
+}
+
+function normalizeScore(raw) {
+  if (!raw) return {};
+
+  const header = raw.header || {};
+  const teams = raw.team || raw.teams || [];
+
+  const scorecards = raw.scorecard || raw.innings || [];
+
+  const score = scorecards.map((sc) => ({
+    inning:
+      sc.innings_name ||
+      sc.inning_name ||
+      sc.innings ||
+      sc.batteam ||
+      "Innings",
+    runs: sc.runs ?? sc.score ?? null,
+    wickets: sc.wkts ?? sc.wickets ?? null,
+    overs: sc.overs ?? sc.overs_done ?? null
+  }));
+
+  const normTeams = teams.map((t) => ({
+    id: t.id || t.team_id,
+    name: t.name || t.team_name || t.s_name
+  }));
+
+  return {
+    status: header.status || raw.status || "Unknown",
+    teams: normTeams,
+    score
+  };
+}
+
+function normalizeCommentary(raw) {
+  if (!raw) return { commentary: [] };
+
+  const lines = raw.commentary ||
+                raw.comm_lines ||
+                raw.data ||
+                [];
+
+  const commentary = lines.map((c) => {
+    // Try to build a readable line
+    const text =
+      c.comm ||
+      c.c_text ||
+      c.text ||
+      c.commentary ||
+      "";
+
+    const over =
+      c.o_no ||
+      c.over ||
+      c.ov ||
+      null;
+
+    if (over) {
+      return `Over ${over}: ${text}`;
+    }
+    return text;
+  }).filter(Boolean);
+
+  return { commentary };
 }
 
 /* ---------------------------------------------------------
-   GET LIVE + RECENT MATCHES
+   ROUTES
 --------------------------------------------------------- */
+
+// GET /api/cricket/matches
 router.get("/matches", async (req, res) => {
   try {
-    const url = `${BASE_URL}/currentMatches?apikey=${API_KEY}`;
-    const data = await fetchJson(url);
+    const raw = await getLiveMatchesRaw();
 
-    // SAFETY CHECKS
-    if (!data) {
-      console.error("MATCH LIST ERROR: No response from API");
-      return res.json([]);
-    }
-
-    if (data.status === "error") {
-      console.error("MATCH LIST ERROR:", data.message);
-      return res.json([]);
-    }
-
-    if (!Array.isArray(data.data)) {
-      console.error("MATCH LIST ERROR: data.data missing");
-      return res.json([]);
-    }
-
-    const matches = data.data.map(m => ({
-      id: m.id,
-      name: `${m.teams?.[0]} vs ${m.teams?.[1]}`,
-      status: m.status,
-      provider: "cricketdata"
-    }));
+    const matches = normalizeMatches(raw);
 
     res.json(matches);
   } catch (err) {
     console.error("MATCH LIST ERROR:", err.message);
-    res.json([]);
+    res.status(500).json({ error: "Failed to fetch match list" });
   }
 });
 
-/* ---------------------------------------------------------
-   GET SCORE
---------------------------------------------------------- */
+// GET /api/cricket/score/:matchId
 router.get("/score/:matchId", async (req, res) => {
   try {
     const { matchId } = req.params;
-    const url = `${BASE_URL}/match_scorecard?apikey=${API_KEY}&id=${matchId}`;
-    const data = await fetchJson(url);
+    const raw = await getMatchScoreRaw(matchId);
 
-    if (!data || data.status === "error" || !data.data) {
-      console.error("SCORE ERROR:", data?.message);
-      return res.json({});
-    }
+    const score = normalizeScore(raw);
 
-    res.json(data.data);
+    res.json(score);
   } catch (err) {
     console.error("SCORE ERROR:", err.message);
-    res.json({});
+    res.status(500).json({ error: "Failed to fetch score" });
   }
 });
 
-/* ---------------------------------------------------------
-   GET COMMENTARY
---------------------------------------------------------- */
+// GET /api/cricket/commentary/:matchId
 router.get("/commentary/:matchId", async (req, res) => {
   try {
     const { matchId } = req.params;
-    const url = `${BASE_URL}/match_commentary?apikey=${API_KEY}&id=${matchId}`;
-    const data = await fetchJson(url);
+    const raw = await getCommentaryRaw(matchId);
 
-    if (!data || data.status === "error" || !data.data) {
-      console.error("COMMENTARY ERROR:", data?.message);
-      return res.json({ commentary: [] });
-    }
+    const commentary = normalizeCommentary(raw);
 
-    res.json({
-      commentary: data.data.commentary || []
-    });
+    res.json(commentary);
   } catch (err) {
     console.error("COMMENTARY ERROR:", err.message);
-    res.json({ commentary: [] });
+    res.status(500).json({ error: "Failed to fetch commentary" });
   }
 });
 
