@@ -1,3 +1,4 @@
+// backend/services/cricbuzzService.js
 import fetch from "node-fetch";
 
 const BASE = "https://mapps.cricbuzz.com/cbzios";
@@ -9,12 +10,30 @@ async function fetchJson(url) {
       Accept: "application/json"
     }
   });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  return res.json();
+
+  if (!res.ok) {
+    console.error("CRICBUZZ HTTP ERROR:", res.status, url);
+    return null;
+  }
+
+  try {
+    return await res.json();
+  } catch (err) {
+    console.error("CRICBUZZ JSON PARSE ERROR:", err.message);
+    return null;
+  }
 }
 
 export async function getLiveMatchesRaw() {
   return fetchJson(`${BASE}/match/livematches`);
+}
+
+export async function getRecentMatchesRaw() {
+  return fetchJson(`${BASE}/match/recent`);
+}
+
+export async function getUpcomingMatchesRaw() {
+  return fetchJson(`${BASE}/match/upcoming`);
 }
 
 export async function getMatchScoreRaw(matchId) {
