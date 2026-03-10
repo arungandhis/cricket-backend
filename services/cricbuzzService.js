@@ -1,5 +1,4 @@
 // backend/services/cricbuzzService.js
-import fetch from "node-fetch";
 
 const BASE = "https://mapps.cricbuzz.com/cbzios";
 
