@@ -1,8 +1,7 @@
-// backend/server.js
 import express from "express";
 import cors from "cors";
 import cricketDataRoutes from "./routes/cricketDataRoutes.js";
-import matchRoutes from "./routes/matchRoutes.js"; // your existing match settings
+import matchRoutes from "./routes/matchRoutes.js";
 
 const app = express();
 const PORT = process.env.PORT || 10000;
@@ -10,10 +9,7 @@ const PORT = process.env.PORT || 10000;
 app.use(cors());
 app.use(express.json());
 
-// Cricbuzz-backed cricket API
 app.use("/api/cricket", cricketDataRoutes);
-
-// Match settings (existing)
 app.use("/api/match", matchRoutes);
 
 app.get("/", (req, res) => {

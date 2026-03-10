@@ -1,4 +1,3 @@
-// backend/services/cricbuzzService.js
 import fetch from "node-fetch";
 
 const BASE = "https://mapps.cricbuzz.com/cbzios";
@@ -6,7 +5,6 @@ const BASE = "https://mapps.cricbuzz.com/cbzios";
 async function fetchJson(url) {
   const res = await fetch(url, {
     headers: {
-      // mimic mobile app a bit
       "User-Agent": "Cricbuzz/Android",
       Accept: "application/json"
     }
@@ -16,7 +14,6 @@ async function fetchJson(url) {
 }
 
 export async function getLiveMatchesRaw() {
-  // Live + recent matches
   return fetchJson(`${BASE}/match/livematches`);
 }
 
