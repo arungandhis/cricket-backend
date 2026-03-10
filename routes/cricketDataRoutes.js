@@ -1,4 +1,5 @@
 // backend/routes/cricketDataRoutes.js
+
 import express from "express";
 import {
   getLiveMatchesRaw,
@@ -135,10 +136,10 @@ router.get("/matches", async (req, res) => {
 
     const all = [...liveList, ...recentList, ...upcomingList].filter(Boolean);
 
-    res.json(all);
+    return res.json(all);
   } catch (err) {
     console.error("MATCH LIST ERROR:", err.message);
-    res.status(500).json({ error: "Failed to fetch match list" });
+    return res.status(500).json({ error: "Failed to fetch match list" });
   }
 });
 
